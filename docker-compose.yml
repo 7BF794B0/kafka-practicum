@@ -1,0 +1,80 @@
+services:
+  kafka-1:
+    image: bitnami/kafka:3.4
+    container_name: kafka-1
+    ports:
+      - "9094:9094"
+    environment:
+      - KAFKA_ENABLE_KRAFT=yes # Включаем режим KRaft
+      - KAFKA_CFG_PROCESS_ROLES=broker,controller # Указываем роли: брокер и контроллер
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER # Название listener для контроллера
+      - ALLOW_PLAINTEXT_LISTENER=yes # Разрешаем небезопасные соединения (PLAINTEXT)
+      - KAFKA_CFG_NODE_ID=1 # Уникальный ID узла (NodeID)
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093 # Список узлов, участвующих в контроллерном кворуме (KRaft), формата (ID@host:controller-port)
+      - KAFKA_KRAFT_CLUSTER_ID=UfbbQWHcRXeD6IbxV9yN1A # ID кластера KRaft
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+        # Настраиваем прослушку на три интерфейса:
+        # PLAINTEXT (для внутреннего Kafka трафика),
+        # CONTROLLER (для контроллерных сообщений),
+        # EXTERNAL (для внешнего подключения).
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka-1:9092,EXTERNAL://127.0.0.1:9094
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT # Сопоставление listener'ов с протоколами безопасности
+    volumes:
+      - kafka_1_data:/bitnami/kafka # Привязываем том для хранения данных
+
+  kafka-2:
+    image: bitnami/kafka:3.4
+    container_name: kafka-2
+    ports:
+      - "9095:9095"
+    environment:
+      - KAFKA_ENABLE_KRAFT=yes
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_NODE_ID=2
+      - KAFKA_CFG_PROCESS_ROLES=broker,controller
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093
+      - KAFKA_KRAFT_CLUSTER_ID=UfbbQWHcRXeD6IbxV9yN1A
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9095
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka-2:9092,EXTERNAL://127.0.0.1:9095
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT
+    volumes:
+      - kafka_2_data:/bitnami/kafka
+
+  kafka-3:
+    image: bitnami/kafka:3.4
+    container_name: kafka-3
+    ports:
+      - "9096:9096"
+    environment:
+      - KAFKA_ENABLE_KRAFT=yes
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_NODE_ID=3
+      - KAFKA_CFG_PROCESS_ROLES=broker,controller
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093
+      - KAFKA_KRAFT_CLUSTER_ID=UfbbQWHcRXeD6IbxV9yN1A
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9096
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka-3:9092,EXTERNAL://127.0.0.1:9096
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT
+    volumes:
+      - kafka_3_data:/bitnami/kafka
+
+  # Веб-интерфейс для управления Kafka (Kafka-UI)
+  kafka-ui:
+    image: provectuslabs/kafka-ui:v0.7.2
+    container_name: kafka-ui
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
+    ports:
+      - 8080:8080
+    environment:
+      KAFKA_CLUSTERS_0_NAME: kraft
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: "kafka-1:9094,kafka-2:9095,kafka-3:9096"
+
+volumes:
+  kafka_1_data:
+  kafka_2_data:
+  kafka_3_data:
