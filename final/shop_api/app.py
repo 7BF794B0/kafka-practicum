@@ -4,6 +4,7 @@ import random
 
 from typing import Iterable, Dict
 from confluent_kafka import Producer
+from confluent_kafka.schema_registry import SchemaRegistryClient, Schema
 
 
 class ShopAPI:
@@ -11,10 +12,19 @@ class ShopAPI:
     """Create producers for all provided Kafka clusters."""
     self.producers = [Producer(cfg) for cfg in kafka_configs]
     self.products = self._load_products()
+    self._register_schema()
 
   def _load_products(self):
     with open('products.json', 'r') as f:
       return json.load(f)
+
+  def _register_schema(self):
+    """Register product schema in Schema Registry."""
+    client = SchemaRegistryClient({'url': 'http://schema-registry:8081'})
+    with open('product.avsc', 'r') as schema_file:
+      schema_str = schema_file.read()
+    schema = Schema(schema_str, schema_type='AVRO')
+    client.register_schema('products-value', schema)
 
   def delivery_report(self, err, msg):
     if err is not None:
@@ -53,6 +63,7 @@ if __name__ == '__main__':
       'ssl.certificate.location': '/etc/kafka/secrets/kafka-cert',
       'ssl.key.location': '/etc/kafka/secrets/kafka-key',
       'acks': 'all',
+      'enable.idempotence': 'true',
     },
     {
       'bootstrap.servers': 'kafka-backup1:9093,kafka-backup2:9094',
@@ -61,6 +72,7 @@ if __name__ == '__main__':
       'ssl.certificate.location': '/etc/kafka/secrets/kafka-cert',
       'ssl.key.location': '/etc/kafka/secrets/kafka-key',
       'acks': 'all',
+      'enable.idempotence': 'true',
     }
   ]
 
